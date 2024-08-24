@@ -2,7 +2,9 @@
 
 # Run Elasticsearch
 
-
+```shell
+ make elastic
+```
 
 ## Getting started
 

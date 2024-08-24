@@ -8,7 +8,12 @@ setup(
         "dagster-cloud",
         # custom
         "google-cloud-storage",
-        "gcsfs"
+        "gcsfs",
+        "tqdm",
+        "requests",
+        "elasticsearch",
+        "openai",
+        "tiktoken"
     ],
     extras_require={"dev": ["dagster-webserver", "pytest"]},
 )
