@@ -1,0 +1,5 @@
+.env
+data/
+assets/gcs_creds.json
+leaf_bro.egg-info/
+__pycache__/
