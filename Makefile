@@ -18,5 +18,8 @@ jupyter:
 	jupyter notebook jupyter_notebooks --ip 0.0.0.0 --port 8887 \
 	--NotebookApp.token='' --NotebookApp.password='' --allow-root --no-browser
 
-dagster:
+clear-data:
+	rm -rf ${CURRENT_DIR}/data/pipelines-data/*
+
+run-dagster:
 	DAGSTER_HOME=${CURRENT_DIR}/data/dagster-data dagster dev

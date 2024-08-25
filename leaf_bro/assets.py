@@ -66,8 +66,7 @@ def get_gcs_csv_local() -> None:
     gcs_bucket = os.environ['GCS_BUCKET']
     gcs_file_path = os.environ['GCS_DATA_PATH']
     root_dir = os.environ['DATA_PATH']
-    output_file_name = 'content_green_bro.csv'
-    result_filename = os.path.join(root_dir, 'pipelines-data', output_file_name)
+    result_filename = os.path.join(root_dir, 'pipelines-data', config['content_local_file_name'])
     print('Data loading to %s' % result_filename)
     if not os.path.exists(result_filename):
         download_cs_file(
@@ -78,7 +77,7 @@ def get_gcs_csv_local() -> None:
 @asset
 def get_gcs_json_local() -> None:
     gcs_bucket = os.environ['GCS_BUCKET']
-    gcs_file_path = os.environ['GCS_DATA_PATH']
+    gcs_file_path = config['reviews_local_file_name']
     root_dir = os.environ['DATA_PATH']
     result_filename = os.path.join(root_dir, 'pipelines-data', config['reviews_local_file_name'])
     print('Data loading to %s' % result_filename)

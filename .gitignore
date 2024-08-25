@@ -3,4 +3,4 @@ data/
 assets/gcs_creds.json
 leaf_bro.egg-info/
 __pycache__/
-.ipynb_checkpoints/
+jupyter_notebooks/.ipynb_checkpoints/
