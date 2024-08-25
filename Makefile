@@ -7,6 +7,7 @@ export
 
 prepare-dirs:
 	mkdir -p ${CURRENT_DIR}/data || true & \
+	mkdir -p ${CURRENT_DIR}/data/pipelines-data || true & \
 	mkdir -p ${CURRENT_DIR}/data/es-data || true & \
 	mkdir -p ${CURRENT_DIR}/data/dagster-data || true
 

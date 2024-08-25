@@ -13,7 +13,9 @@ setup(
         "requests",
         "elasticsearch",
         "openai",
-        "tiktoken"
+        "tiktoken",
+        #"python-rocksdb==0.6"
+        "PyYAML"
     ],
     extras_require={"dev": ["dagster-webserver", "pytest"]},
 )

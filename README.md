@@ -1,9 +1,19 @@
 # leaf_bro
 
+Prepare directories
+```shell
+make prepare-dirs
+```
+
 # Run Elasticsearch
 
 ```shell
  make elastic
+```
+
+Run dagster
+```shell
+make dagster
 ```
 
 ## Getting started

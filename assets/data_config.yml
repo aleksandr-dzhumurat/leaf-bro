@@ -1,0 +1,23 @@
+elastic_index_name: greenbro-content
+reviews_local_file_name: content_reviews_green_bro.json
+content_local_file_name: content_green_bro.csv
+elastic_index_settings:
+  settings:
+    number_of_shards: 1
+    number_of_replicas: 0
+  mappings:
+    properties:
+      title:
+        type: "text"
+      tags:
+        type: "text"
+      relief:
+        type: "text"
+      positive_effects:
+        type: "text"
+      flavours:
+        type: "text"
+      avg_rating:
+        type: "float"
+      num_ratings:
+        type: "integer"
