@@ -16,18 +16,35 @@ services:
       - "9200:9200"
       - "9300:9300"
     networks:
-      - es-net
+      - prj_network
     deploy:
       resources:
         limits:
           memory: 4g  # Adjust memory limit
         reservations:
           memory: 1g  # Ensure at least this much memory is reserved
-
+  api:
+    build:
+      context: .
+      dockerfile: ./services/api/Dockerfile
+    # command: >
+    #   uvicorn src.main:app  --host 0.0.0.0 --port 8000 --reload 
+    env_file:
+      - .env
+    volumes:
+      - ./data:/srv/data
+      - ./services/api/src:/srv/src
+    ports:
+      - "8000:8000"
+    networks:
+      - prj_network
+    container_name: green_buddy_api
 volumes:
   es-data:
     driver: local
 
 networks:
-  es-net:
+  prj_network:
     driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450

@@ -15,7 +15,9 @@ setup(
         "openai",
         "tiktoken",
         #"python-rocksdb==0.6"
-        "PyYAML"
+        "PyYAML",
+        "backoff",
+        "openai"
     ],
     extras_require={"dev": ["dagster-webserver", "pytest"]},
 )

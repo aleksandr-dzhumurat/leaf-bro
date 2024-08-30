@@ -8,13 +8,15 @@ export
 prepare-dirs:
 	mkdir -p ${CURRENT_DIR}/data || true & \
 	mkdir -p ${CURRENT_DIR}/data/pipelines-data || true & \
+	mkdir -p ${CURRENT_DIR}/data/api-data || true & \
+	mkdir -p ${CURRENT_DIR}/data/pipelines-data/models || true & \
 	mkdir -p ${CURRENT_DIR}/data/es-data || true & \
 	mkdir -p ${CURRENT_DIR}/data/dagster-data || true
 
 elastic:
 	docker-compose up elasticsearch
 
-jupyter:
+run-jupyter:
 	jupyter notebook jupyter_notebooks --ip 0.0.0.0 --port 8887 \
 	--NotebookApp.token='' --NotebookApp.password='' --allow-root --no-browser
 
