@@ -38,12 +38,12 @@ class VectorSearchEngine:
 import pandas as pd
 
 root_dir = os.environ['API_DATA_PATH']
-csvfile_path = os.path.join(root_dir, 'pipelines-data', 'content_green_bro.csv')
+csvfile_path = os.path.join(root_dir, 'pipelines-data', 'api_db.csv')
 content_db = pd.read_csv(csvfile_path)
 
 def get_content(content_names_list):
     res = [
-        {'title': row['title'], 'explanation': f"{row['tags']}: {row['positive_effects']}"}
+        {'title': row['title'], 'url': row['url'], 'explanation': f"{row['tags']}: {row['positive_effects']}"}
         for _, row in content_db[content_db['item_name'].isin(content_names_list)].iterrows()
     ]
     return res

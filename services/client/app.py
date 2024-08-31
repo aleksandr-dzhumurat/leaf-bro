@@ -28,13 +28,15 @@ for i, option in enumerate(positive_effects_options):
 
 # Text input for search
 st.header("Search")
-search_query = st.text_input("Enter your search query:")
+search_query = st.text_input("Enter any additional info:")
 
-# Initialize session state to store results and checkboxes
+# Initialize session state to store results, checkboxes, and the thank you message flag
 if "results" not in st.session_state:
     st.session_state.results = []
 if "checkboxes" not in st.session_state:
     st.session_state.checkboxes = []
+if "show_thank_you" not in st.session_state:
+    st.session_state.show_thank_you = False
 
 # Place search button in a single column
 if st.button("Search"):
@@ -59,7 +61,7 @@ if st.session_state.results:
     
     for i, result in enumerate(st.session_state.results):
         col1, col2, col3 = st.columns([4, 6, 1])
-        col1.write(result['title'])
+        col1.markdown(f"[{result['title']}]({result['url']})")
         col2.write(result['explanation'])
         st.session_state.checkboxes[i] = col3.checkbox('', value=st.session_state.checkboxes[i], key=i)
 
@@ -73,8 +75,8 @@ if st.session_state.results:
                           for i, result in enumerate(st.session_state.results)]
             # Send POST request with scoring data
             score_response = requests.post("http://0.0.0.0:8000/score", json=score_data)
-            # Display score response
-            st.write("Score Response:", score_response.json())
+            # Show the "Thank you!" message
+            st.session_state.show_thank_you = True
 
     with col2:
         if st.button("Clear"):
@@ -82,3 +84,10 @@ if st.session_state.results:
             st.session_state.results = []
             st.session_state.checkboxes = []
             st.experimental_rerun()
+
+# Display the "Thank you!" pop-up if the flag is set
+if st.session_state.show_thank_you:
+    st.write("### Thank you!")
+    if st.button("Ok"):
+        st.session_state.show_thank_you = False
+        st.experimental_rerun()

@@ -20,6 +20,7 @@ class ScoreResult(BaseModel):
 
 class SearchResult(BaseModel):
     title: str
+    url: str
     explanation: str
 
 class ScoreItem(BaseModel):
