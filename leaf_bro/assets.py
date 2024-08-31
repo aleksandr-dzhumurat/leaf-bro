@@ -55,57 +55,6 @@ def check_all_fields_present(data_dict, data_class):
     else:
         print("All fields are present.")
 
-
-def download_cs_file(bucket_name, file_name, destination_file_name): 
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(file_name)
-    blob.download_to_filename(destination_file_name)
-    return True
-
-def build_es_index(es_client, documents, index_name):
-    es_client.indices.create(index=index_name, body=config['elastic_index_settings'])
-
-    for doc in tqdm(documents):
-        es_client.index(index=index_name, document=doc)
-    print('Index created')
-
-@asset
-def get_gcs_csv_local() -> None:
-    gcs_bucket = os.environ['GCS_BUCKET']
-    gcs_file_path = os.environ['GCS_DATA_PATH']
-    root_dir = os.environ['DATA_PATH']
-    result_filename = os.path.join(root_dir, 'pipelines-data', config['content_local_file_name'])
-    print('Data loading to %s' % result_filename)
-    if not os.path.exists(result_filename):
-        download_cs_file(
-            bucket_name=gcs_bucket, file_name=gcs_file_path,
-            destination_file_name=result_filename
-        )
-
-@asset
-def get_gcs_json_local() -> None:
-    gcs_bucket = os.environ['GCS_BUCKET']
-    gcs_file_path = config['reviews_local_file_name']
-    root_dir = os.environ['DATA_PATH']
-    result_filename = os.path.join(root_dir, 'pipelines-data', config['reviews_local_file_name'])
-    print('Data loading to %s' % result_filename)
-    if not os.path.exists(result_filename):
-        download_cs_file(
-            bucket_name=gcs_bucket, file_name=gcs_file_path,
-            destination_file_name=result_filename
-        )
-
-def read_csv_as_dicts() -> List:
-    root_dir = os.environ['DATA_PATH']
-    result_filename = os.path.join(root_dir, 'pipelines-data', config['content_local_file_name'])
-    df = pd.read_csv(result_filename)
-    df['category'] = 'flower'
-    csv_entries = df.to_dict(orient='records')
-    print('Num entries: %d' % len(csv_entries))
-
-    return csv_entries
-
 def check_csv_schema(documents):
     sample_strain_dict = random.choice(documents)
     check_all_fields_present(sample_strain_dict, Strain)
@@ -119,15 +68,23 @@ def get_elastic_client():
 
     return es_client
 
-@asset(deps=[get_gcs_csv_local, get_gcs_json_local])
-def build_elastic_index() -> None:
-    es_client = get_elastic_client()
-    index_entries = read_csv_as_dicts()
-    check_csv_schema(index_entries)
-    build_es_index(es_client, index_entries, config['elastic_index_name'])
 
-def load_json(reviews_file_path):
-    with open(reviews_file_path, 'r') as f:
+def download_gcs_file(bucket_name, file_name, destination_file_name): 
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(file_name)
+    blob.download_to_filename(destination_file_name)
+    return True
+
+def build_es_index(es_client, documents, index_name):
+    es_client.indices.create(index=index_name, body=config['elastic_index_settings'])
+
+    for doc in tqdm(documents):
+        es_client.index(index=index_name, document=doc)
+    print('Index created')
+
+def load_json(input_file_path):
+    with open(input_file_path, 'r', encoding="utf-8") as f:
         reviews_dict = json.load(f)
     return reviews_dict
 
@@ -146,6 +103,10 @@ client = OpenAI(
     api_key=os.environ["OPENAI_API_KEY"]
 )
 
+def get_id_hash(input_text):
+    seed_phrase = f'{str(datetime.datetime.now().timestamp())}{input_text}'
+    res = str(hashlib.md5(seed_phrase.encode('utf-8')).hexdigest())[:12]
+    return res
 
 @backoff.on_exception(backoff.expo, openai.APIError)
 @backoff.on_exception(backoff.expo, openai.RateLimitError)
@@ -163,10 +124,8 @@ def gpt_query(gpt_params, verbose: bool = False, avoid_fuckup: bool = False) -> 
         if '[' in gpt_response or '?' in gpt_response or '{' in gpt_response:
             raise RuntimeError
     res = {'recs': gpt_response}
-    res.update({'prompt_tokens': response.usage.completion_tokens, 'prompt_tokens': response.usage.prompt_tokens, 'total_tokens': response.usage.total_tokens})
-    seed_phrase = f'{str(datetime.datetime.now().timestamp())}{gpt_response}'
-    generation_id = str(hashlib.md5(seed_phrase.encode('utf-8')).hexdigest())[:12]
-    res.update({'id': generation_id})
+    res.update({'completion_tokens': response.usage.completion_tokens, 'prompt_tokens': response.usage.prompt_tokens, 'total_tokens': response.usage.total_tokens})
+    res.update({'id': get_id_hash(gpt_response)})
     return res
 
 def random_shuffle(input_list) -> str:
@@ -231,26 +190,26 @@ def prepare_ground_truth(queries_dict, data_path):
     print('data saved to %s' % data_path)
     return ground_truth
 
-@asset
+@asset(group_name="retrieval_evaluation")
 def prepare_queies_for_evaluation():
     root_dir = os.environ['DATA_PATH']
     reviews_path = os.path.join(root_dir, 'pipelines-data', 'content_reviews_green_bro.json')
     res_csv_path = os.path.join(root_dir, 'pipelines-data', 'content_green_bro.csv')
-    output_filename = os.path.join(root_dir, 'pipelines-data', 'content_queries.json')
+    content_queries_filename = os.path.join(root_dir, 'pipelines-data', 'content_queries.json')
 
     content_db = pd.read_csv(res_csv_path)
     reviews_dict = load_json(reviews_path)
     reviews_aggregated = aggregate_reviews(content_db, reviews_dict)
    
-    if not os.path.exists(output_filename):
+    if not os.path.exists(content_queries_filename):
         for _, j in reviews_aggregated.items():
             reviews = j['reviews']
             prompt = promt_generation(reviews)
             j.update['queries'] = generate(prompt)
-        with open(output_filename, 'w') as f:
+        with open(content_queries_filename, 'w') as f:
             json.dump(reviews_aggregated, f)
     else:
-        with open(output_filename, 'r') as f:
+        with open(content_queries_filename, 'r') as f:
             reviews_aggregated = json.load(f)
     print('Data generated %s' % len(reviews_aggregated))
     output_file_path = os.path.join(root_dir, 'pipelines-data','ground_truth.json')
@@ -293,14 +252,14 @@ def prepare_catalog(reviews_agregated):
         corpus.append(content['reviews'])
     return index, corpus
 
-@asset
+@asset(group_name="retrieval_evaluation")
 def download_huggingface_model():
     root_dir = os.environ['DATA_PATH']
     models_dir=os.path.join(root_dir, 'pipelines-data', 'models')
-    embedder = get_or_create_embedder(models_dir, model_name='multi-qa-distilbert-cos-v1')
+    get_pytorch_model(models_dir, model_name='multi-qa-distilbert-cos-v1')
 
 
-@asset
+@asset(group_name="retrieval_evaluation", deps=[download_huggingface_model])
 def eval_embeds():
     root_dir = os.environ['DATA_PATH']
     output_path = os.path.join(root_dir, 'pipelines-data', 'models', 'embeds.npy')
@@ -350,7 +309,7 @@ def eval_hitrate(golden_dataset):
         res.append( 1 if sum(entry['origin']==i['doc'] for i in search_engine.search(v, num_results=30)) > 0 else 0)
     return sum(res), len(res)
 
-@asset
+@asset(group_name="retrieval_evaluation", deps=[eval_embeds, prepare_queies_for_evaluation])
 def eval_embedder_hitrate():
     root_dir = os.environ['DATA_PATH']
     data_path = os.path.join(root_dir, 'pipelines-data', 'golden_dataset.json')
@@ -359,3 +318,44 @@ def eval_embedder_hitrate():
     hits, entries = eval_hitrate(golden_dataset)
     print('Hit rate: %.3f, num entries: %d' % (hits/entries, entries))
 
+
+@asset(group_name="data_ingestion")
+def get_content_data() -> None:
+    gcs_bucket = os.environ['GCS_BUCKET']
+    root_dir = os.environ['DATA_PATH']
+    result_filename = os.path.join(root_dir, 'pipelines-data', config['content_file_name'])
+    print('Data loading to %s' % result_filename)
+    if not os.path.exists(result_filename):
+        download_gcs_file(
+            bucket_name=gcs_bucket, file_name=config['content_file_name'],
+            destination_file_name=result_filename
+        )
+
+@asset(group_name="data_ingestion")
+def get_reviews_data() -> None:
+    gcs_bucket = os.environ['GCS_BUCKET']
+    root_dir = os.environ['DATA_PATH']
+    result_filename = os.path.join(root_dir, 'pipelines-data', config['reviews_file_name'])
+    print('Data loading to %s' % result_filename)
+    if not os.path.exists(result_filename):
+        download_gcs_file(
+            bucket_name=gcs_bucket, file_name=config['reviews_file_name'],
+            destination_file_name=result_filename
+        )
+
+def read_csv_as_dicts() -> List:
+    root_dir = os.environ['DATA_PATH']
+    result_filename = os.path.join(root_dir, 'pipelines-data', config['content_file_name'])
+    df = pd.read_csv(result_filename)
+    df['category'] = 'flower'
+    csv_entries = df.to_dict(orient='records')
+    print('Num entries: %d' % len(csv_entries))
+
+    return csv_entries
+
+@asset(group_name="data_ingestion", deps=[get_content_data, get_reviews_data])
+def elastic_data_ingestion() -> None:
+    es_client = get_elastic_client()
+    index_entries = read_csv_as_dicts()
+    check_csv_schema(index_entries)
+    build_es_index(es_client, index_entries, config['elastic_index_name'])

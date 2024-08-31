@@ -1,11 +1,25 @@
 # leaf_bro
 
-Prepare directories
+Prepare directories (`./data` ad all subdirectories)
 ```shell
 make prepare-dirs
 ```
 
-# Run Elasticsearch
+Data for run: download [files](https://drive.google.com/drive/folders/1Vf4eYCGThQHXo0E8A27somP0Z0fa2DbF?usp=drive_link)
+
+* content_leaf_bro.csv
+* content_reviews_green_bro.csv
+* golden_dataset.csv
+
+Place all files above to `./data/pipelines_data` to avoid using Google Cloud Storage
+
+# Data ingestion
+
+Data ingestion overview
+
+![Data ingestion overview](./img/data_ingestion_schema.png)
+
+Run Elasticsearch
 
 ```shell
  make elastic
@@ -31,6 +45,15 @@ dagster dev
 ```
 
 Open http://localhost:3000 with your browser to see the project.
+
+User interface
+
+```shell
+ ROOT_DIR=$(pwd)/data streamlit run services/client/app.py --server.port 8502
+ ```
+
+
+
 
 
 ## Development

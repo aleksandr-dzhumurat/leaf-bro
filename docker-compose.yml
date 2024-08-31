@@ -16,7 +16,7 @@ services:
       - "9200:9200"
       - "9300:9300"
     networks:
-      - prj_network
+      - backtier_network
     deploy:
       resources:
         limits:
@@ -28,7 +28,9 @@ services:
       context: .
       dockerfile: ./services/api/Dockerfile
     # command: >
-    #   uvicorn src.main:app  --host 0.0.0.0 --port 8000 --reload 
+    #   uvicorn src.main:app  --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - elasticsearch
     env_file:
       - .env
     volumes:
@@ -37,14 +39,14 @@ services:
     ports:
       - "8000:8000"
     networks:
-      - prj_network
+      - backtier_network
     container_name: green_buddy_api
 volumes:
   es-data:
     driver: local
 
 networks:
-  prj_network:
+  backtier_network:
     driver: bridge
     driver_opts:
       com.docker.network.driver.mtu: 1450

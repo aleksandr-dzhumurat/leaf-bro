@@ -1,6 +1,6 @@
 elastic_index_name: greenbro-content
-reviews_local_file_name: content_reviews_green_bro.json
-content_local_file_name: content_green_bro.csv
+reviews_file_name: content_reviews_green_bro.json
+content_file_name: content_green_bro.csv
 elastic_index_settings:
   settings:
     number_of_shards: 1
