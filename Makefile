@@ -25,3 +25,7 @@ clear-data:
 
 run-dagster:
 	DAGSTER_HOME=${CURRENT_DIR}/data/dagster-data dagster dev
+
+push-api:
+	docker build -f services/api/Dockerfile -t adzhumurat/leaf_bro_api . && \
+	docker push adzhumurat/leaf_bro_api:latest

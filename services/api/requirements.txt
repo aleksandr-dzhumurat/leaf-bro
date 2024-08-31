@@ -9,3 +9,6 @@ uvicorn[standard]==0.30.1
 # RND
 torch==2.2
 sentence-transformers
+# openAI
+backoff
+openai

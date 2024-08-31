@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import List
 
 
-from src.utils import embedder, search_engine, get_content
+from src.utils import embedder, search_engine, get_candidates, rerank_candidates
 
 app = FastAPI()
 
@@ -42,16 +42,12 @@ async def search_items(request: SearchRequest):
     # Placeholder search logic based on the request
     reliefs = f"reliefs: {', '.join(request.relief)}"
     positive_effects = f"positive effects: {', '.join(request.positive_effects)}"
-    query = f"{reliefs}; {positive_effects}; {request.query}"
+    query = f"{reliefs}; {positive_effects}"
     q = embedder.encode(query)
-    result = search_engine.search(q, num_results=5)
-    results = get_content([i['doc'] for i in result])
-    # results = []
-    # for item in mock_data:
-    #     if any(relief in item['explanation'] for relief in request.relief) or \
-    #        any(effect in item['explanation'] for effect in request.positive_effects) or \
-    #        request.query.lower() in item['explanation'].lower():
-    #         results.append(item)
+    result = search_engine.search(q, num_results=10)
+    results = get_candidates([i['doc'] for i in result])
+    if len(request.query) > 0:
+        results = rerank_candidates(results, request.query)
     if not results:
         raise HTTPException(status_code=404, detail="No matching items found")
     

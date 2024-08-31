@@ -1,6 +1,13 @@
 import os
 import json
+import datetime
+import hashlib
+
 import numpy as np
+import backoff
+import openai
+from openai import OpenAI
+
 
 def get_pytorch_model(models_dir, model_name='multi-qa-distilbert-cos-v1'):
   from sentence_transformers import SentenceTransformer
@@ -25,6 +32,11 @@ def get_or_create_embedder(models_dir, model_name):
         embedder = get_pytorch_model(models_dir, model_name)
     return embedder
 
+def get_id_hash(input_text):
+    seed_phrase = f'{str(datetime.datetime.now().timestamp())}{input_text}'
+    res = str(hashlib.md5(seed_phrase.encode('utf-8')).hexdigest())[:12]
+    return res
+
 class VectorSearchEngine:
     def __init__(self, documents, embeddings):
         self.documents = documents
@@ -41,9 +53,12 @@ root_dir = os.environ['API_DATA_PATH']
 csvfile_path = os.path.join(root_dir, 'pipelines-data', 'api_db.csv')
 content_db = pd.read_csv(csvfile_path)
 
-def get_content(content_names_list):
+def get_candidates(content_names_list):
     res = [
-        {'title': row['title'], 'url': row['url'], 'explanation': f"{row['tags']}: {row['positive_effects']}"}
+        {
+            'title': row['title'], 'url': row['url'], 'explanation': f"{row['tags']}: {row['positive_effects']}",
+            'flavours': row['flavours']
+        }
         for _, row in content_db[content_db['item_name'].isin(content_names_list)].iterrows()
     ]
     return res
@@ -63,3 +78,77 @@ def get_search_instance():
 
 search_engine = get_search_instance()
 embedder = get_or_create_embedder(os.path.join(os.environ['API_DATA_PATH'], 'models'), model_name='multi-qa-distilbert-cos-v1')
+
+
+@backoff.on_exception(backoff.expo, openai.APIError)
+@backoff.on_exception(backoff.expo, openai.RateLimitError)
+@backoff.on_exception(backoff.expo,openai.Timeout)
+@backoff.on_exception(backoff.expo, RuntimeError)
+def gpt_query(gpt_params, verbose: bool = False, avoid_fuckup: bool = False) -> dict:
+    print('connecting OpenAI...')
+    if verbose:
+        print(gpt_params["messages"][1]["content"])
+    response = client.chat.completions.create(
+        **gpt_params
+    )
+    gpt_response = response.choices[0].message.content
+    if avoid_fuckup:
+        if '[' in gpt_response or '?' in gpt_response or '{' in gpt_response:
+            raise RuntimeError
+    res = {'recs': gpt_response}
+    res.update({'completion_tokens': response.usage.completion_tokens, 'prompt_tokens': response.usage.prompt_tokens, 'total_tokens': response.usage.total_tokens})
+    res.update({'id': get_id_hash(gpt_response)})
+    return res
+
+client = OpenAI(
+    api_key=os.environ["OPENAI_API_KEY"]
+)
+
+def generate_promt(candidates, query) -> str:
+  promt = f"""
+      Below you can find items with description in format `title: description`
+      {candidates}
+      Rerank items and return reranked item ids base on user query. Return only reranked items, comma-separate
+      Do not add any explanation, just result
+      User query: {query}
+      expected result: [title, title, title]
+      reranked:
+  """
+  return promt
+
+def generate(gpt_prompt, verbose=False):
+    gpt_params = {
+        'model': 'gpt-3.5-turbo',
+        'max_tokens': 500,
+        'temperature': 0.7,
+        'top_p': 0.5,
+        'frequency_penalty': 0.5,
+    }
+    if verbose:
+        print(gpt_prompt)
+    messages = [
+        {
+          "role": "system",
+          "content": "You are a helpful assistant for medicine shopping",
+        },
+        {
+          "role": "user",
+          "content": gpt_prompt,
+        },
+    ]
+    gpt_params.update({'messages': messages})
+    res = gpt_query(gpt_params, verbose=False)
+    return res
+
+def rerank_candidates(candidates, query):
+    prompt_candidates = [f"{i['title']}: {i['explanation']}, {i['flavours']}" for i in candidates]
+    prompt = generate_promt(prompt_candidates, query)
+    generated_result = generate(prompt)
+    ranked_titles = generated_result['recs'].split(',')
+    res = []
+    for i in ranked_titles:
+        current_title = i.strip()
+        filtered_candidates = [j for j in candidates if j['title']==current_title]
+        if len(filtered_candidates) > 0:
+            res.append(filtered_candidates[0])
+    return res
