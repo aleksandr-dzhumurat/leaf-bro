@@ -21,3 +21,8 @@ elastic_index_settings:
         type: "float"
       num_ratings:
         type: "integer"
+      question_text_vector:
+        type: dense_vector
+        dims: 768
+        index: true
+        similarity: cosine

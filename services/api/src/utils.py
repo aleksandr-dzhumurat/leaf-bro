@@ -76,6 +76,28 @@ def get_search_instance():
     search_engine = VectorSearchEngine(documents=index, embeddings=embeds)
     return search_engine
 
+class VectorDB:
+    def __init__(self, index, embeddings):
+        self.db = {}
+        for i, embed in enumerate(embeddings):
+            self.db[index[i]] = embed
+
+    def get_item_vector(self, item_name):
+        return self.db[item_name]
+
+def get_vector_db():
+    root_dir = os.environ['API_DATA_PATH']
+    models_dir = os.path.join(root_dir, 'pipelines-data', 'models')
+    index_file_path = os.path.join(models_dir, 'embeds_index.json')
+    embeds_file_path = os.path.join(models_dir, 'embeds.npy')
+    with open(index_file_path, 'r') as f:
+        index = json.load(f)
+    embeds = np.load(embeds_file_path)
+    print(embeds.shape, len(index))
+    vector_db = VectorDB(index=index, embeddings=embeds)
+    return vector_db
+
+vector_db = get_vector_db()
 search_engine = get_search_instance()
 embedder = get_or_create_embedder(os.path.join(os.environ['API_DATA_PATH'], 'models'), model_name='multi-qa-distilbert-cos-v1')
 
@@ -109,7 +131,7 @@ def generate_promt(candidates, query) -> str:
       Below you can find items with description in format `title: description`
       {candidates}
       Rerank items and return reranked item ids base on user query. Return only reranked items, comma-separate
-      Do not add any explanation, just result
+      Do not add any explanation, just result. Do not filter irrelevannt, just rank lower.
       User query: {query}
       expected result: [title, title, title]
       reranked:

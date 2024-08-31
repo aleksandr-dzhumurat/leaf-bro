@@ -54,7 +54,7 @@ async def search_items(request: SearchRequest):
     return results
 
 
-@app.post("/score")
+@app.post("/feedback")
 async def score(data: ScoreRequest):
     # Process the scoring data here
     # For now, let's just return the received data

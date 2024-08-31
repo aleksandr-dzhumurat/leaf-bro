@@ -74,7 +74,7 @@ if st.session_state.results:
             score_data = [{"title": result['title'], "relevant": st.session_state.checkboxes[i]} 
                           for i, result in enumerate(st.session_state.results)]
             # Send POST request with scoring data
-            score_response = requests.post("http://0.0.0.0:8000/score", json=score_data)
+            score_response = requests.post("http://0.0.0.0:8000/feedback", json=score_data)
             # Show the "Thank you!" message
             st.session_state.show_thank_you = True
 

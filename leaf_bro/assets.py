@@ -68,7 +68,6 @@ def get_elastic_client():
 
     return es_client
 
-
 def download_gcs_file(bucket_name, file_name, destination_file_name): 
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
@@ -343,12 +342,37 @@ def get_reviews_data() -> None:
             destination_file_name=result_filename
         )
 
+class VectorDB:
+    def __init__(self, index, embeddings):
+        self.db = {}
+        for i, embed in enumerate(embeddings):
+            self.db[index[i]] = embed
+
+    def get_item_vector(self, item_name):
+        return self.db[item_name]
+
+def get_vector_db():
+    root_dir = os.environ['DATA_PATH']
+    models_dir = os.path.join(root_dir, 'pipelines-data', 'models')
+    index_file_path = os.path.join(models_dir, 'embeds_index.json')
+    embeds_file_path = os.path.join(models_dir, 'embeds.npy')
+    with open(index_file_path, 'r') as f:
+        index = json.load(f)
+    embeds = np.load(embeds_file_path)
+    print(embeds.shape, len(index))
+    vector_db = VectorDB(index=index, embeddings=embeds)
+    return vector_db
+
+vector_db = get_vector_db()
+
 def read_csv_as_dicts() -> List:
     root_dir = os.environ['DATA_PATH']
     result_filename = os.path.join(root_dir, 'pipelines-data', config['content_file_name'])
     df = pd.read_csv(result_filename)
     df['category'] = 'flower'
     csv_entries = df.to_dict(orient='records')
+    for i in csv_entries:
+        i['question_text_vector'] = vector_db.get_item_vector(i['item_name'])
     print('Num entries: %d' % len(csv_entries))
 
     return csv_entries

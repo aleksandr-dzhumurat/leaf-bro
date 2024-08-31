@@ -29,3 +29,11 @@ run-dagster:
 push-api:
 	docker build -f services/api/Dockerfile -t adzhumurat/leaf_bro_api . && \
 	docker push adzhumurat/leaf_bro_api:latest
+
+run-api-app:
+	docker run -d --rm --network backtier --env-file ${CURRENT_DIR}/.env \
+	-v ${CURRENT_DIR}/data_store:/srv/data -v ${CURRENT_DIR}/src:/srv/src -p 8000:8000 -d --name api_app \
+	adzhumurat/leaf_bro_api:latest
+
+run-ui-app:
+	ROOT_DIR=$(pwd)/data streamlit run services/client/src/app.py --server.port 8502
