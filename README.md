@@ -103,9 +103,27 @@ Also API container is pushed to [dockerhub](https://hub.docker.com/repository/do
 
 ## Best practices
 
-* [ ] Hybrid search: combining both text and vector search (at least evaluating it) (1 point)
-* [ ] Document re-ranking (1 point)
-* [ ] User query rewriting (1 point)
+Hybrid search: combining both text and vector search (at least evaluating it) (1 point)
+
+### Document re-ranking (1 point)
+
+Items re-ranking based on OpenAI API
+
+
+Prompt
+
+```python
+  prompt = f"""
+      Below you can find items with description in format `title: description`
+      {candidates}
+      Rerank items and return reranked item ids base on user query. Return only reranked items, comma-separate
+      Do not add any explanation, just result. Do not filter irrelevannt, just rank lower.
+      User query: {query}
+      expected result: [title, title, title]
+      reranked:
+  """
+```
+
 
 
 

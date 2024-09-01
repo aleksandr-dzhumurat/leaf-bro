@@ -4,4 +4,4 @@ assets/gcs_creds.json
 leaf_bro.egg-info/
 __pycache__/
 jupyter_notebooks/.ipynb_checkpoints/
-.DS_Store/
+.DS_Store

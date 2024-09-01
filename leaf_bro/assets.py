@@ -30,6 +30,7 @@ class Strain:
     flavours: str
     avg_rating: float
     num_ratings: int
+    text_vector: list
 
 def get_config(config_path = None):
     if config_path is None:
@@ -365,19 +366,22 @@ def get_vector_db():
 
 vector_db = get_vector_db()
 
+
+@asset(group_name="data_ingestion")
 def read_csv_as_dicts() -> List:
     root_dir = os.environ['DATA_PATH']
     result_filename = os.path.join(root_dir, 'pipelines-data', config['content_file_name'])
     df = pd.read_csv(result_filename)
     df['category'] = 'flower'
     csv_entries = df.to_dict(orient='records')
-    for i in csv_entries:
-        i['question_text_vector'] = vector_db.get_item_vector(i['item_name'])
+    print('Adding vectors')
+    for i in csv_entries:  # add vectors
+        i['text_vector'] = vector_db.get_item_vector(i['item_name'])
     print('Num entries: %d' % len(csv_entries))
 
     return csv_entries
 
-@asset(group_name="data_ingestion", deps=[get_content_data, get_reviews_data])
+@asset(group_name="data_ingestion", deps=[read_csv_as_dicts, get_content_data, get_reviews_data])
 def elastic_data_ingestion() -> None:
     es_client = get_elastic_client()
     index_entries = read_csv_as_dicts()

@@ -1,3 +1,6 @@
+
+import json
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -7,16 +10,21 @@ from src.utils import embedder, search_engine, get_candidates, rerank_candidates
 
 app = FastAPI()
 
-# Define request and response models
 class SearchRequest(BaseModel):
     relief: List[str]
     positive_effects: List[str]
     query: str
 
+class EmbedResult(BaseModel):
+    embed: str
+
 class ScoreResult(BaseModel):
     relief: List[str]
     positive_effects: List[str]
     query: str
+
+class EmbeddingRequest(BaseModel):
+    text: str
 
 class SearchResult(BaseModel):
     title: str
@@ -53,13 +61,15 @@ async def search_items(request: SearchRequest):
     
     return results
 
-
 @app.post("/feedback")
 async def score(data: ScoreRequest):
-    # Process the scoring data here
-    # For now, let's just return the received data
+    # Process the scoring data here: for now, let's just return the received data
     return {"received_items": data.items}
 
+@app.post("/embed", response_model=EmbedResult)
+def embed_text(data: EmbeddingRequest):
+    embeddings = embedder.encode(data.text)
+    return {'embed':json.dumps(embeddings.tolist()) }
 
 if __name__ == "__main__":
     import uvicorn

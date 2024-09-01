@@ -4,9 +4,12 @@ import datetime
 import hashlib
 
 import numpy as np
+import pandas as pd
 import backoff
 import openai
 from openai import OpenAI
+from elasticsearch import Elasticsearch, ConnectionError
+
 
 
 def get_pytorch_model(models_dir, model_name='multi-qa-distilbert-cos-v1'):
@@ -47,7 +50,60 @@ class VectorSearchEngine:
         idx = np.argsort(-scores)[:num_results]
         return [{'score': scores[i], 'doc': self.documents[i]} for i in idx]
 
-import pandas as pd
+class ElasticSearchEngine:
+    def __init__(self):
+        self.es_client = Elasticsearch('http://localhost:9200')
+
+    def search(self, query, v_query, num_results=10):
+        index_name = 'greenbro-content'
+        knn_query = {
+            "field": "text_vector",
+            "query_vector": v_query,
+            "k": 5,
+            "num_candidates": 10000
+        }
+    
+        response = self.es_client.search(
+            index=index_name,
+            query={
+                    "bool": {
+                        "must": {
+                            "multi_match": {
+                                "query": query,
+                                "fields": ["relief", "positive_effects", "flavours"],
+                                "type": "best_fields"
+                            }
+                        },
+                        "filter": {  # TODO: add filter as parameter
+                            "term": {
+                                "category": "flower"
+                            }
+                        }
+                    }
+            },
+            knn=knn_query,
+            size=5
+        )
+        resp = response['hits']['hits'][:num_results]
+        response = [{'score': i['_score'], 'res': i['_source']['item_name']} for i in response]
+        return response
+
+def get_search_instance(type='vector'):
+    if type == 'vector':
+        root_dir = os.environ['API_DATA_PATH']
+        models_dir = os.path.join(root_dir, 'pipelines-data', 'models')
+
+        index_file_path = os.path.join(models_dir, 'embeds_index.json')
+        embeds_file_path = os.path.join(models_dir, 'embeds.npy')
+        with open(index_file_path, 'r') as f:
+            index = json.load(f)
+        embeds = np.load(embeds_file_path)
+        print(embeds.shape, len(index))
+        search_engine = VectorSearchEngine(documents=index, embeddings=embeds)
+    elif type == 'elasticsearch':
+
+    return search_engine
+
 
 root_dir = os.environ['API_DATA_PATH']
 csvfile_path = os.path.join(root_dir, 'pipelines-data', 'api_db.csv')
@@ -62,19 +118,6 @@ def get_candidates(content_names_list):
         for _, row in content_db[content_db['item_name'].isin(content_names_list)].iterrows()
     ]
     return res
-
-def get_search_instance():
-    root_dir = os.environ['API_DATA_PATH']
-    models_dir = os.path.join(root_dir, 'pipelines-data', 'models')
-
-    index_file_path = os.path.join(models_dir, 'embeds_index.json')
-    embeds_file_path = os.path.join(models_dir, 'embeds.npy')
-    with open(index_file_path, 'r') as f:
-        index = json.load(f)
-    embeds = np.load(embeds_file_path)
-    print(embeds.shape, len(index))
-    search_engine = VectorSearchEngine(documents=index, embeddings=embeds)
-    return search_engine
 
 class VectorDB:
     def __init__(self, index, embeddings):
@@ -127,7 +170,7 @@ client = OpenAI(
 )
 
 def generate_promt(candidates, query) -> str:
-  promt = f"""
+  prompt = f"""
       Below you can find items with description in format `title: description`
       {candidates}
       Rerank items and return reranked item ids base on user query. Return only reranked items, comma-separate
@@ -136,7 +179,7 @@ def generate_promt(candidates, query) -> str:
       expected result: [title, title, title]
       reranked:
   """
-  return promt
+  return prompt
 
 def generate(gpt_prompt, verbose=False):
     gpt_params = {
