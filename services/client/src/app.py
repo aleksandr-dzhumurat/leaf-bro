@@ -1,5 +1,9 @@
+import os
+
 import streamlit as st
 import requests
+
+API_URL = os.getenv('STREAMLIT_API_URL', 'http://0.0.0.0:8000')
 
 # Set the title of the app
 st.title("Leaf Bro")
@@ -48,7 +52,7 @@ if st.button("Search"):
     }
     
     # Send POST request to the specified endpoint
-    response = requests.post("http://0.0.0.0:8000/search", json=data)
+    response = requests.post(f"{API_URL}/search", json=data)
     
     # Store results in session state
     st.session_state.results = response.json()

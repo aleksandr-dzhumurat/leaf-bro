@@ -13,6 +13,9 @@ prepare-dirs:
 	mkdir -p ${CURRENT_DIR}/data/es-data || true & \
 	mkdir -p ${CURRENT_DIR}/data/dagster-data || true
 
+build-network:
+	docker network create backtier -d bridge || true
+
 elastic:
 	docker-compose up elasticsearch
 
@@ -32,8 +35,24 @@ push-api:
 
 run-api-app:
 	docker run -d --rm --network backtier --env-file ${CURRENT_DIR}/.env \
-	-v ${CURRENT_DIR}/data_store:/srv/data -v ${CURRENT_DIR}/src:/srv/src -p 8000:8000 -d --name api_app \
+	-v ${CURRENT_DIR}/services/api/src:/srv/src \
+	-v ${CURRENT_DIR}/data:/srv/data -v ${CURRENT_DIR}/src:/srv/src -p 8000:8000 -d --name api_app \
 	adzhumurat/leaf_bro_api:latest
+
+push-ui:
+	docker build -f services/client/Dockerfile -t adzhumurat/leaf_bro_client . && \
+	docker push adzhumurat/leaf_bro_client:latest
+
+run-ui-service:
+	docker run -it --rm --network backtier --env-file ${CURRENT_DIR}/.env \
+	-p 8501:8501  \
+	-v ${CURRENT_DIR}/data:/srv/data \
+	-v ${CURRENT_DIR}/services/client/src:/srv/src \
+	-e ROOT_DIR=/srv/data \
+	-e STREAMLIT_API_URL=api_app \
+	--name client_app adzhumurat/leaf_bro_client:latest
 
 run-ui-app:
 	ROOT_DIR=$(pwd)/data streamlit run services/client/src/app.py --server.port 8502
+
+run: run-api-app run-ui-service build-network
