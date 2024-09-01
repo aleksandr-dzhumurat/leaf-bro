@@ -84,7 +84,7 @@ class ElasticSearchEngine:
             knn=knn_query,
             size=5
         )
-        resp = response['hits']['hits'][:num_results]
+        response = response['hits']['hits'][:num_results]
         response = [{'score': i['_score'], 'res': i['_source']['item_name']} for i in response]
         return response
 
@@ -101,7 +101,7 @@ def get_search_instance(type='vector'):
         print(embeds.shape, len(index))
         search_engine = VectorSearchEngine(documents=index, embeddings=embeds)
     elif type == 'elasticsearch':
-
+        search_engine = ElasticSearchEngine()
     return search_engine
 
 
