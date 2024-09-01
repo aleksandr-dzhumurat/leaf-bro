@@ -66,6 +66,10 @@ Multiple retrieval approaches are evaluated:
 
 and the best one is used for production service
 
+Retrieval evaluation implemented as Dagster pipeline
+
+![rag_evaluation](./img/rag_evaluation.png)
+
 ## RAG evaluation
 
 0 points: No evaluation of RAG is provided
@@ -79,6 +83,8 @@ and the best one is used for production service
 Streamlit interface
 
 ![streamlit](./img/interface.png)
+
+Queries for evaluation was generating with OpenAI.
 
 ##  Monitoring
 
