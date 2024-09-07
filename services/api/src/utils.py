@@ -11,7 +11,6 @@ from openai import OpenAI
 from elasticsearch import Elasticsearch, ConnectionError
 
 
-
 def get_pytorch_model(models_dir, model_name='multi-qa-distilbert-cos-v1'):
   from sentence_transformers import SentenceTransformer
 
