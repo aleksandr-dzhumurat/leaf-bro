@@ -9,6 +9,7 @@ prepare-dirs:
 	mkdir -p ${CURRENT_DIR}/data || true & \
 	mkdir -p ${CURRENT_DIR}/data/pipelines-data || true & \
 	mkdir -p ${CURRENT_DIR}/data/api-data || true & \
+	mkdir -p ${CURRENT_DIR}/data/zinc_data || true & \
 	mkdir -p ${CURRENT_DIR}/data/pipelines-data/models || true & \
 	mkdir -p ${CURRENT_DIR}/data/es-data || true & \
 	mkdir -p ${CURRENT_DIR}/data/dagster-data || true
@@ -51,6 +52,11 @@ run-ui-service:
 	-e ROOT_DIR=/srv/data \
 	-e STREAMLIT_API_URL=api_app \
 	--name client_app adzhumurat/leaf_bro_client:latest
+
+run-zinc:
+	docker run -it --rm --network backtier -v ${CURRENT_DIR}/data/zinc_data:/data -e ZINC_DATA_PATH="/data" -p 4080:4080 \
+		-e ZINC_FIRST_ADMIN_USER=admin -e ZINC_FIRST_ADMIN_PASSWORD=admin \
+		--name zincsearch public.ecr.aws/zinclabs/zincsearch:0.4.10
 
 run-ui-app:
 	ROOT_DIR=$(pwd)/data streamlit run services/client/src/app.py --server.port 8502
